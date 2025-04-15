@@ -28,3 +28,17 @@ export interface Alert {
   url: string;
   acknowledged: boolean;
 }
+
+export interface NetworkScanResult {
+  devices: Device[];
+  scanTime: string;
+}
+
+export interface NetworkTrafficData {
+  source: string;
+  destination: string;
+  protocol: string;
+  port: number;
+  bytes: number;
+  timestamp: Date;
+}

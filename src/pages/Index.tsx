@@ -1,70 +1,82 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import DevicesList from "@/components/DevicesList";
 import TrafficMonitor from "@/components/TrafficMonitor";
 import AlertSystem from "@/components/AlertSystem";
 import { NetworkStats } from "@/components/NetworkStats";
 import { Header } from "@/components/Header";
-import { detectMaliciousSite } from "@/utils/securityUtils";
 import { Device, NetworkLog, Alert } from "@/types";
-import { mockDevices, mockLogs } from "@/data/mockData";
+import { scanLocalNetwork, monitorNetworkActivity } from "@/utils/networkUtils";
+import { toast } from "@/components/ui/sonner";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [logs, setLogs] = useState<NetworkLog[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const { toast: uiToast } = useToast();
 
-  // Simulate network scanning
-  const scanNetwork = () => {
+  // Network scanning function
+  const scanNetwork = useCallback(async () => {
     setIsScanning(true);
-    // Simulate network scan delay
-    setTimeout(() => {
-      setDevices(mockDevices);
+    try {
+      const result = await scanLocalNetwork();
+      setDevices(result.devices);
+      uiToast({
+        title: "Network Scan Complete",
+        description: `Found ${result.devices.length} devices in ${result.scanTime}`
+      });
+    } catch (error) {
+      console.error("Network scan error:", error);
+      uiToast({
+        variant: "destructive",
+        title: "Scan Failed",
+        description: "Unable to complete network scan"
+      });
+    } finally {
       setIsScanning(false);
-    }, 2000);
-  };
+    }
+  }, [uiToast]);
 
-  // Initial scan on component mount
+  // Add a new log entry
+  const addLogEntry = useCallback((newLog: NetworkLog) => {
+    setLogs(prevLogs => [newLog, ...prevLogs].slice(0, 100));
+  }, []);
+
+  // Add a new alert
+  const addAlert = useCallback((newAlert: Alert) => {
+    setAlerts(prevAlerts => [newAlert, ...prevAlerts]);
+    
+    // Show a toast notification for new alerts
+    toast.error(`Security Alert: ${newAlert.message}`, {
+      description: `Device: ${newAlert.deviceName}`
+    });
+  }, []);
+
+  // Set up network monitoring
   useEffect(() => {
+    // Initial network scan
     scanNetwork();
     
-    // Set up mock log generation
-    const logInterval = setInterval(() => {
-      if (devices.length > 0) {
-        const randomDevice = devices[Math.floor(Math.random() * devices.length)];
-        const newLog = {
-          id: Date.now().toString(),
-          timestamp: new Date(),
-          deviceId: randomDevice.id,
-          deviceName: randomDevice.name,
-          ipAddress: randomDevice.ipAddress,
-          activity: mockLogs[Math.floor(Math.random() * mockLogs.length)].activity,
-          url: mockLogs[Math.floor(Math.random() * mockLogs.length)].url,
-        };
-        
-        setLogs(prevLogs => [newLog, ...prevLogs].slice(0, 100));
-        
-        // Check for malicious activity
-        const isMalicious = detectMaliciousSite(newLog.url);
-        if (isMalicious) {
-          const newAlert: Alert = {
-            id: Date.now().toString(),
-            timestamp: new Date(),
-            deviceId: randomDevice.id,
-            deviceName: randomDevice.name,
-            severity: "high",
-            message: `Potential malicious site detected: ${newLog.url}`,
-            url: newLog.url,
-            acknowledged: false
-          };
-          setAlerts(prevAlerts => [newAlert, ...prevAlerts]);
-        }
-      }
-    }, 5000);
+    // Set up network monitoring only if we have devices
+    if (devices.length > 0) {
+      const cleanup = monitorNetworkActivity(addLogEntry, addAlert, devices);
+      
+      return () => {
+        cleanup();
+      };
+    }
+  }, [devices.length, scanNetwork, addLogEntry, addAlert]);
 
-    return () => clearInterval(logInterval);
-  }, [devices]);
+  // Add periodic scan every 5 minutes
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      scanNetwork();
+    }, 5 * 60 * 1000);
+    
+    return () => clearInterval(intervalId);
+  }, [scanNetwork]);
 
   // Acknowledge an alert
   const acknowledgeAlert = (alertId: string) => {
