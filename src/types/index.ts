@@ -1,4 +1,3 @@
-
 export interface Device {
   id: string;
   name: string;
@@ -16,6 +15,10 @@ export interface NetworkLog {
   ipAddress: string;
   activity: string;
   url: string;
+  protocol?: string;
+  isEncrypted?: boolean;
+  transferSize?: number;
+  duration?: number;
 }
 
 export interface Alert {
@@ -27,6 +30,8 @@ export interface Alert {
   message: string;
   url: string;
   acknowledged: boolean;
+  eventLevel?: 'info' | 'low' | 'medium' | 'high' | 'critical';
+  protocolInfo?: string;
 }
 
 export interface NetworkScanResult {

@@ -1,7 +1,8 @@
-
 import { NetworkLog, Alert, Device } from "@/types";
 import { toast } from "@/components/ui/sonner";
 import { detectMaliciousSite, getThreatSeverity } from "./securityUtils";
+import { analyzeProtocol } from "./protocolAnalysis";
+import { analyzeTrafficSafety, classifySecurityEvent } from "./securityClassification";
 
 // Monitor real network activity using the Performance API
 export const monitorNetworkActivity = (
@@ -19,12 +20,19 @@ export const monitorNetworkActivity = (
           return;
         }
         
+        // Get device information
         const device = devices.find(d => d.id === 'this-device') || 
                      (devices.length > 0 ? devices[Math.floor(Math.random() * devices.length)] : 
                      { id: 'unknown', name: 'Unknown Device', ipAddress: '0.0.0.0' });
         
         const activity = getActivityTypeFromURL(url);
         
+        // Analyze protocol and security
+        const protocolInfo = analyzeProtocol(url);
+        const securityAnalysis = analyzeTrafficSafety(url);
+        const eventLevel = classifySecurityEvent(url, activity);
+        
+        // Create network log with enhanced information
         const newLog: NetworkLog = {
           id: Date.now().toString(),
           timestamp: new Date(),
@@ -32,13 +40,17 @@ export const monitorNetworkActivity = (
           deviceName: device.name,
           ipAddress: device.ipAddress,
           activity,
-          url
+          url,
+          protocol: protocolInfo.protocol,
+          isEncrypted: protocolInfo.isEncrypted,
+          transferSize: resourceEntry.transferSize || 0,
+          duration: resourceEntry.duration || 0
         };
         
         callback(newLog);
         
-        const isMalicious = detectMaliciousSite(url);
-        if (isMalicious) {
+        // Enhanced security alerts
+        if (!securityAnalysis.isSafe || eventLevel !== 'info') {
           const severity = getThreatSeverity(url);
           const newAlert: Alert = {
             id: Date.now().toString(),
@@ -46,14 +58,16 @@ export const monitorNetworkActivity = (
             deviceId: device.id,
             deviceName: device.name,
             severity,
-            message: `Potential malicious site detected: ${new URL(url).hostname}`,
+            message: securityAnalysis.reason,
             url,
-            acknowledged: false
+            acknowledged: false,
+            eventLevel,
+            protocolInfo: protocolInfo.description
           };
           
           alertCallback(newAlert);
           
-          toast.error(`Security Alert: Malicious site detected`, {
+          toast.error(`Security Alert: ${securityAnalysis.reason}`, {
             description: `${device.name} - ${new URL(url).hostname}`,
           });
         }
