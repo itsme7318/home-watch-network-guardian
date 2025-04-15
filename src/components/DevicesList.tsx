@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Device, NetworkLog } from "@/types";
-import { Laptop, Smartphone, Tv, Router, Clock } from "lucide-react";
+import { Laptop, Smartphone, Tv, Router, Clock, Tablet, Wifi } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,13 +15,17 @@ const DevicesList = ({ devices, logs }: DevicesListProps) => {
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   
   const getDeviceIcon = (type: string) => {
-    switch (type) {
+    switch (type.toLowerCase()) {
       case "laptop":
         return <Laptop className="h-5 w-5" />;
       case "smartphone":
         return <Smartphone className="h-5 w-5" />;
       case "tv":
         return <Tv className="h-5 w-5" />;
+      case "tablet":
+        return <Tablet className="h-5 w-5" />;
+      case "iot":
+        return <Wifi className="h-5 w-5" />;
       default:
         return <Router className="h-5 w-5" />;
     }
@@ -40,10 +44,14 @@ const DevicesList = ({ devices, logs }: DevicesListProps) => {
     }).format(date);
   };
 
+  const isHostDevice = (device: Device) => {
+    return device.id === 'this-device';
+  };
+
   return (
     <div className="bg-slate-800 rounded-lg border border-slate-700">
       <div className="p-4 border-b border-slate-700">
-        <h2 className="text-xl font-bold">Connected Devices</h2>
+        <h2 className="text-xl font-bold">Connected Devices (Hotspot & Network)</h2>
       </div>
       
       <Tabs defaultValue="devices">
@@ -59,11 +67,11 @@ const DevicesList = ({ devices, logs }: DevicesListProps) => {
             {devices.map(device => (
               <div 
                 key={device.id}
-                className={`bg-slate-700 rounded-lg p-4 cursor-pointer transition-all hover:bg-slate-600 ${selectedDevice === device.id ? 'ring-2 ring-sky-500' : ''}`}
+                className={`bg-slate-700 rounded-lg p-4 cursor-pointer transition-all hover:bg-slate-600 ${selectedDevice === device.id ? 'ring-2 ring-sky-500' : ''} ${isHostDevice(device) ? 'border-2 border-sky-500' : ''}`}
                 onClick={() => setSelectedDevice(device.id === selectedDevice ? null : device.id)}
               >
                 <div className="flex items-center space-x-3 mb-3">
-                  <div className="bg-slate-600 p-2 rounded-full">
+                  <div className={`${isHostDevice(device) ? 'bg-sky-700' : 'bg-slate-600'} p-2 rounded-full`}>
                     {getDeviceIcon(device.type)}
                   </div>
                   <div>
@@ -78,6 +86,14 @@ const DevicesList = ({ devices, logs }: DevicesListProps) => {
                   </Badge>
                   <span className="text-slate-400">MAC: {device.macAddress}</span>
                 </div>
+                
+                {isHostDevice(device) && (
+                  <div className="mt-2">
+                    <Badge variant="outline" className="bg-sky-900/50 border-sky-800">
+                      Hotspot Host
+                    </Badge>
+                  </div>
+                )}
                 
                 {selectedDevice === device.id && (
                   <div className="mt-4 pt-4 border-t border-slate-600">

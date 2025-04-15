@@ -16,10 +16,10 @@ export function Header({ scanNetwork, isScanning }: HeaderProps) {
     // Get initial network info
     setNetworkInfo(getNetworkInfo());
     
-    // Update network info every 10 seconds
+    // Update network info every 5 seconds for more real-time monitoring
     const intervalId = setInterval(() => {
       setNetworkInfo(getNetworkInfo());
-    }, 10000);
+    }, 5000);
     
     return () => clearInterval(intervalId);
   }, []);
@@ -29,7 +29,7 @@ export function Header({ scanNetwork, isScanning }: HeaderProps) {
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <Radar className="h-8 w-8 text-sky-500" />
-          <h1 className="text-2xl font-bold text-white">HomeGuard SIEM</h1>
+          <h1 className="text-2xl font-bold text-white">SIEM Home Lab</h1>
         </div>
         
         <div className="flex items-center space-x-4">
@@ -38,6 +38,7 @@ export function Header({ scanNetwork, isScanning }: HeaderProps) {
             <span className="text-sm text-slate-300">
               {networkInfo.type !== 'unknown' ? networkInfo.type : 'Network'} | 
               {networkInfo.downlink > 0 ? ` ${networkInfo.downlink.toFixed(1)} Mbps` : ''}
+              {networkInfo.rtt > 0 ? ` | ${networkInfo.rtt}ms` : ''}
             </span>
           </div>
           

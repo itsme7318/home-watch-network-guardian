@@ -17,7 +17,7 @@ const Index = () => {
   const [isScanning, setIsScanning] = useState(false);
   const { toast: uiToast } = useToast();
 
-  // Network scanning function
+  // Network scanning function - enhanced for real-time detection
   const scanNetwork = useCallback(async () => {
     setIsScanning(true);
     try {
@@ -39,12 +39,12 @@ const Index = () => {
     }
   }, [uiToast]);
 
-  // Add a new log entry
+  // Add a new log entry in real-time
   const addLogEntry = useCallback((newLog: NetworkLog) => {
     setLogs(prevLogs => [newLog, ...prevLogs].slice(0, 100));
   }, []);
 
-  // Add a new alert
+  // Add a new security alert in real-time
   const addAlert = useCallback((newAlert: Alert) => {
     setAlerts(prevAlerts => [newAlert, ...prevAlerts]);
     
@@ -59,21 +59,20 @@ const Index = () => {
     // Initial network scan
     scanNetwork();
     
-    // Set up network monitoring only if we have devices
-    if (devices.length > 0) {
-      const cleanup = monitorNetworkActivity(addLogEntry, addAlert, devices);
-      
-      return () => {
-        cleanup();
-      };
-    }
-  }, [devices.length, scanNetwork, addLogEntry, addAlert]);
+    // Set up real-time network monitoring regardless of device count
+    // This ensures we're always monitoring network traffic
+    const cleanup = monitorNetworkActivity(addLogEntry, addAlert, devices);
+    
+    return () => {
+      cleanup();
+    };
+  }, [scanNetwork, addLogEntry, addAlert, devices]);
 
-  // Add periodic scan every 5 minutes
+  // Add periodic scan every 2 minutes to detect new hotspot clients
   useEffect(() => {
     const intervalId = setInterval(() => {
       scanNetwork();
-    }, 5 * 60 * 1000);
+    }, 2 * 60 * 1000);
     
     return () => clearInterval(intervalId);
   }, [scanNetwork]);
