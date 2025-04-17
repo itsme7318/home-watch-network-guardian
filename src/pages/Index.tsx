@@ -5,15 +5,21 @@ import TrafficMonitor from "@/components/TrafficMonitor";
 import AlertSystem from "@/components/AlertSystem";
 import { NetworkStats } from "@/components/NetworkStats";
 import { Header } from "@/components/Header";
-import { Device, NetworkLog, Alert } from "@/types";
+import BandwidthMonitor from "@/components/BandwidthMonitor";
+import MapView from "@/components/MapView";
+import SecurityDashboard from "@/components/SecurityDashboard";
+import { Device, NetworkLog, Alert, SecurityEvent, GeoLocation } from "@/types";
 import { scanLocalNetwork, monitorNetworkActivity } from "@/utils/networkUtils";
 import { toast } from "@/components/ui/sonner";
 import { useToast } from "@/hooks/use-toast";
+import { generateMockGeoData } from "@/utils/geoLocation";
 
 const Index = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [logs, setLogs] = useState<NetworkLog[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [geoData, setGeoData] = useState<GeoLocation[]>([]);
+  const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const { toast: uiToast } = useToast();
 
@@ -23,6 +29,10 @@ const Index = () => {
     try {
       const result = await scanLocalNetwork();
       setDevices(result.devices);
+      
+      // Generate mock geo data for demo purposes
+      setGeoData(generateMockGeoData(Math.min(result.devices.length, 8)));
+      
       uiToast({
         title: "Network Scan Complete",
         description: `Found ${result.devices.length} devices in ${result.scanTime}`
@@ -53,6 +63,43 @@ const Index = () => {
       description: `Device: ${newAlert.deviceName}`
     });
   }, []);
+  
+  // Add a new security event in real-time
+  const addSecurityEvent = useCallback((newEvent: SecurityEvent) => {
+    setSecurityEvents(prevEvents => [newEvent, ...prevEvents].slice(0, 100));
+  }, []);
+
+  // Generate mock security events for demonstration
+  useEffect(() => {
+    const eventTypes: SecurityEvent['eventType'][] = ['intrusion', 'malware', 'anomaly', 'policy_violation'];
+    const severities: SecurityEvent['severity'][] = ['low', 'medium', 'high'];
+    
+    const generateMockEvent = (): SecurityEvent => {
+      const device = devices[Math.floor(Math.random() * Math.max(devices.length, 1))];
+      return {
+        id: Date.now().toString(),
+        timestamp: new Date(),
+        sourceIp: device?.ipAddress || `192.168.1.${Math.floor(Math.random() * 255)}`,
+        destinationIp: `203.0.113.${Math.floor(Math.random() * 255)}`,
+        eventType: eventTypes[Math.floor(Math.random() * eventTypes.length)],
+        severity: severities[Math.floor(Math.random() * severities.length)],
+        description: `Detected suspicious ${eventTypes[Math.floor(Math.random() * eventTypes.length)]} activity`
+      };
+    };
+    
+    // Generate initial events
+    const initialEvents = Array.from({ length: 15 }, () => generateMockEvent());
+    setSecurityEvents(initialEvents);
+    
+    // Periodically add new events for demo purposes
+    const intervalId = setInterval(() => {
+      if (Math.random() > 0.7) { // 30% chance of new event
+        addSecurityEvent(generateMockEvent());
+      }
+    }, 10000);
+    
+    return () => clearInterval(intervalId);
+  }, [devices, addSecurityEvent]);
 
   // Set up network monitoring
   useEffect(() => {
@@ -90,7 +137,7 @@ const Index = () => {
     <div className="min-h-screen bg-slate-900 text-white">
       <Header scanNetwork={scanNetwork} isScanning={isScanning} />
       
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6">
         <NetworkStats 
           deviceCount={devices.length} 
           logCount={logs.length} 
@@ -106,7 +153,16 @@ const Index = () => {
           </div>
         </div>
         
-        <div className="mt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <BandwidthMonitor />
+          <SecurityDashboard events={securityEvents} alerts={alerts} />
+        </div>
+        
+        <div className="mt-6">
+          <MapView geoData={geoData} />
+        </div>
+        
+        <div className="mt-6">
           <DevicesList devices={devices} logs={logs} />
         </div>
       </main>

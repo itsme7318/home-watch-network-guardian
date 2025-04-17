@@ -13,10 +13,14 @@ class BandwidthMonitor {
 
     // Get current network performance data
     const currentData = performance.getEntriesByType('resource');
-    const downloadBytes = currentData.reduce((total, entry) => total + entry.transferSize, 0);
+    const downloadBytes = currentData.reduce((total, entry) => {
+      // Need to check if transferSize exists on the entry
+      return total + ((entry as PerformanceResourceTiming).transferSize || 0);
+    }, 0);
+    
     const uploadBytes = currentData.reduce((total, entry) => {
       // Estimate upload size based on request headers and body
-      return total + (entry as any).requestBodySize || 0;
+      return total + ((entry as any).requestBodySize || 0);
     }, 0);
 
     // Calculate bandwidth
