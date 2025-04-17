@@ -7,18 +7,19 @@ import { bandwidthMonitor } from "./bandwidthMonitoring";
 import { trackLocation } from "./geoLocation";
 import { analyzeTraffic } from "./securityAnalysis";
 
-// Monitor real network activity using the Performance API
 export const monitorNetworkActivity = (
   callback: (log: NetworkLog) => void,
   alertCallback: (alert: Alert) => void,
   devices: Device[]
 ) => {
-  const observer = new PerformanceObserver(async (list) => {
+  // Setup Performance observer for real-time network monitoring
+  const observer = new PerformanceObserver((list) => {
     list.getEntries().forEach(async (entry) => {
       if (entry.entryType === 'resource') {
         const resourceEntry = entry as PerformanceResourceTiming;
         const url = resourceEntry.name;
         
+        // Skip local resources
         if (url.includes('localhost') || url.includes('127.0.0.1')) {
           return;
         }
@@ -28,22 +29,16 @@ export const monitorNetworkActivity = (
                      (devices.length > 0 ? devices[Math.floor(Math.random() * devices.length)] : 
                      { id: 'unknown', name: 'Unknown Device', ipAddress: '0.0.0.0' });
         
-        // Enhanced monitoring
+        // Enhanced monitoring with real-time analysis
         const activity = getActivityTypeFromURL(url);
         const protocolInfo = analyzeProtocol(url);
         const securityAnalysis = analyzeTrafficSafety(url);
         const eventLevel = classifySecurityEvent(url, activity);
         
-        // Monitor bandwidth
+        // Monitor bandwidth in real-time
         const bandwidthData = bandwidthMonitor.measureBandwidth();
         
-        // Track location for external IPs
-        const geoLocation = await trackLocation(device.ipAddress);
-        
-        // Enhanced security analysis
-        const securityEvent = analyzeTraffic(url, protocolInfo.port);
-        
-        // Create enhanced network log
+        // Create network log
         const newLog: NetworkLog = {
           id: Date.now().toString(),
           timestamp: new Date(),
@@ -60,8 +55,8 @@ export const monitorNetworkActivity = (
         
         callback(newLog);
         
-        // Enhanced security alerts
-        if (securityEvent || !securityAnalysis.isSafe || eventLevel !== 'info') {
+        // Real-time security alerts
+        if (!securityAnalysis.isSafe || eventLevel !== 'info') {
           const severity = getThreatSeverity(url);
           const newAlert: Alert = {
             id: Date.now().toString(),
@@ -69,7 +64,7 @@ export const monitorNetworkActivity = (
             deviceId: device.id,
             deviceName: device.name,
             severity,
-            message: securityEvent?.description || securityAnalysis.reason,
+            message: securityAnalysis.reason,
             url,
             acknowledged: false,
             eventLevel,
@@ -82,16 +77,25 @@ export const monitorNetworkActivity = (
             description: `${device.name} - ${new URL(url).hostname}`,
           });
         }
+        
+        // Analyze for potential security events
+        const securityEvent = analyzeTraffic(url, protocolInfo.port);
+        if (securityEvent) {
+          toast.warning(`Security Event: ${securityEvent.description}`, {
+            description: `Type: ${securityEvent.eventType} | Severity: ${securityEvent.severity}`,
+          });
+        }
       }
     });
   });
   
   observer.observe({ entryTypes: ['resource'] });
   
+  // Real-time network interface monitoring
   const interfaceCheckInterval = setInterval(() => {
-    // Interface check placeholder
-  }, 30000);
-
+    bandwidthMonitor.measureBandwidth();
+  }, 1000);
+  
   return () => {
     observer.disconnect();
     clearInterval(interfaceCheckInterval);
