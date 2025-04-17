@@ -47,3 +47,28 @@ export interface NetworkTrafficData {
   bytes: number;
   timestamp: Date;
 }
+
+export interface BandwidthData {
+  timestamp: Date;
+  download: number;
+  upload: number;
+  latency: number;
+}
+
+export interface GeoLocation {
+  ip: string;
+  country: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface SecurityEvent {
+  id: string;
+  timestamp: Date;
+  sourceIp: string;
+  destinationIp: string;
+  eventType: 'intrusion' | 'malware' | 'anomaly' | 'policy_violation';
+  severity: 'low' | 'medium' | 'high';
+  description: string;
+}

@@ -1,8 +1,11 @@
-import { NetworkLog, Alert, Device } from "@/types";
+import { NetworkLog, Alert, Device, SecurityEvent } from "@/types";
 import { toast } from "@/components/ui/sonner";
 import { detectMaliciousSite, getThreatSeverity } from "./securityUtils";
 import { analyzeProtocol } from "./protocolAnalysis";
 import { analyzeTrafficSafety, classifySecurityEvent } from "./securityClassification";
+import { bandwidthMonitor } from "./bandwidthMonitoring";
+import { trackLocation } from "./geoLocation";
+import { analyzeTraffic } from "./securityAnalysis";
 
 // Monitor real network activity using the Performance API
 export const monitorNetworkActivity = (
@@ -10,8 +13,8 @@ export const monitorNetworkActivity = (
   alertCallback: (alert: Alert) => void,
   devices: Device[]
 ) => {
-  const observer = new PerformanceObserver((list) => {
-    list.getEntries().forEach((entry) => {
+  const observer = new PerformanceObserver(async (list) => {
+    list.getEntries().forEach(async (entry) => {
       if (entry.entryType === 'resource') {
         const resourceEntry = entry as PerformanceResourceTiming;
         const url = resourceEntry.name;
@@ -25,14 +28,22 @@ export const monitorNetworkActivity = (
                      (devices.length > 0 ? devices[Math.floor(Math.random() * devices.length)] : 
                      { id: 'unknown', name: 'Unknown Device', ipAddress: '0.0.0.0' });
         
+        // Enhanced monitoring
         const activity = getActivityTypeFromURL(url);
-        
-        // Analyze protocol and security
         const protocolInfo = analyzeProtocol(url);
         const securityAnalysis = analyzeTrafficSafety(url);
         const eventLevel = classifySecurityEvent(url, activity);
         
-        // Create network log with enhanced information
+        // Monitor bandwidth
+        const bandwidthData = bandwidthMonitor.measureBandwidth();
+        
+        // Track location for external IPs
+        const geoLocation = await trackLocation(device.ipAddress);
+        
+        // Enhanced security analysis
+        const securityEvent = analyzeTraffic(url, protocolInfo.port);
+        
+        // Create enhanced network log
         const newLog: NetworkLog = {
           id: Date.now().toString(),
           timestamp: new Date(),
@@ -50,7 +61,7 @@ export const monitorNetworkActivity = (
         callback(newLog);
         
         // Enhanced security alerts
-        if (!securityAnalysis.isSafe || eventLevel !== 'info') {
+        if (securityEvent || !securityAnalysis.isSafe || eventLevel !== 'info') {
           const severity = getThreatSeverity(url);
           const newAlert: Alert = {
             id: Date.now().toString(),
@@ -58,7 +69,7 @@ export const monitorNetworkActivity = (
             deviceId: device.id,
             deviceName: device.name,
             severity,
-            message: securityAnalysis.reason,
+            message: securityEvent?.description || securityAnalysis.reason,
             url,
             acknowledged: false,
             eventLevel,
@@ -67,7 +78,7 @@ export const monitorNetworkActivity = (
           
           alertCallback(newAlert);
           
-          toast.error(`Security Alert: ${securityAnalysis.reason}`, {
+          toast.error(`Security Alert: ${newAlert.message}`, {
             description: `${device.name} - ${new URL(url).hostname}`,
           });
         }
