@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import DevicesList from "@/components/DevicesList";
 import TrafficMonitor from "@/components/TrafficMonitor";
@@ -13,7 +12,7 @@ import { Device, NetworkLog, Alert, SecurityEvent, GeoLocation } from "@/types";
 import { scanLocalNetwork, monitorNetworkActivity } from "@/utils/networkUtils";
 import { toast } from "@/components/ui/sonner";
 import { useToast } from "@/hooks/use-toast";
-import { generateMockGeoData } from "@/utils/geoLocation";
+import { generateMockGeoData, trackLocation } from "@/utils/geoLocation";
 
 const Index = () => {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -24,15 +23,20 @@ const Index = () => {
   const [isScanning, setIsScanning] = useState(false);
   const { toast: uiToast } = useToast();
 
-  // Network scanning function - enhanced for real-time detection
+  // Network scanning function
   const scanNetwork = useCallback(async () => {
     setIsScanning(true);
     try {
       const result = await scanLocalNetwork();
       setDevices(result.devices);
       
-      // Generate mock geo data for demo purposes
-      setGeoData(generateMockGeoData(Math.min(result.devices.length, 8)));
+      // Get real geolocation data for the detected devices
+      const geoPromises = result.devices.map(device => 
+        trackLocation(device.ipAddress)
+      );
+      
+      const geoResults = await Promise.all(geoPromises);
+      setGeoData(geoResults.filter((loc): loc is GeoLocation => loc !== null));
       
       uiToast({
         title: "Network Scan Complete",
