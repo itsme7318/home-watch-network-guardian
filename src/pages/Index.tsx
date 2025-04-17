@@ -8,6 +8,7 @@ import { Header } from "@/components/Header";
 import BandwidthMonitor from "@/components/BandwidthMonitor";
 import MapView from "@/components/MapView";
 import SecurityDashboard from "@/components/SecurityDashboard";
+import HotspotManager from "@/components/HotspotManager";
 import { Device, NetworkLog, Alert, SecurityEvent, GeoLocation } from "@/types";
 import { scanLocalNetwork, monitorNetworkActivity } from "@/utils/networkUtils";
 import { toast } from "@/components/ui/sonner";
@@ -154,11 +155,12 @@ const Index = () => {
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          <BandwidthMonitor />
+          <HotspotManager />
           <SecurityDashboard events={securityEvents} alerts={alerts} />
         </div>
-        
-        <div className="mt-6">
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <BandwidthMonitor />
           <MapView geoData={geoData} />
         </div>
         
